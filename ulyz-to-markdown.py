@@ -181,6 +181,7 @@ def run(args):
         sys.exit(1)
 
     if os.path.isdir(args[1]):
+        print("Loading files from", args[1])
         outdir = None
         if len(args) == 3:
             outdir = args[2]
