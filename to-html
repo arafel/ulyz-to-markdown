@@ -1,0 +1,52 @@
+#!/bin/sh
+INPUT=""
+OUTPUT=""
+WHOLE_HTML=1
+DISABLE_SMART=1
+PARAMS=""
+
+usage() {
+  echo "Usage: to-html -i <inputfile> -o <output> [-nosmart] [-whole]"
+  echo ""
+  echo "-nosmart - turn off smart-quotes. If quotes look odd in HTML output use this."
+  echo "-whole - output a whole HTML document (-s to pandoc)"
+}
+
+while [ $# -gt 0 ] ; do
+  case $1 in
+    "-i")
+      shift
+      INPUT=$1
+      ;;
+    "-o")
+      shift
+      OUTPUT=$1
+      ;;
+    "-whole")
+      WHOLE_HTML=1
+      PARAMS="$PARAMS -s"
+      ;;
+    "-nosmart")
+      DISABLE_SMART=1
+      PARAMS="$PARAMS -f markdown-smart"
+      ;;
+    "-h")
+      usage
+      exit 3
+      ;;
+  esac
+  shift
+done
+
+if [ "$INPUT" == "" ] ; then
+  echo "You didn't specify an input".
+  usage
+  exit 1
+fi
+if [ "$OUTPUT" == "" ] ; then
+  echo "You didn't specify an output."
+  usage
+  exit 2
+fi
+
+pandoc $PARAMS -i "$INPUT" -o "$OUTPUT"
