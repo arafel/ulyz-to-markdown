@@ -1,8 +1,12 @@
 #!/usr/bin/env python
+import os.path
 import sys
 import logging
+import zipfile
 
 # External modules
+from glob import glob
+
 import bs4
 from unidecode import unidecode
 
@@ -10,8 +14,8 @@ logger = logging.getLogger()
 
 
 class FormatException(Exception):
-    def __init__(self):
-        super().__init__(self)
+    def __init__(self, msg):
+        super().__init__(self, msg)
 
 
 def load_keywords(sheet):
@@ -24,11 +28,11 @@ def load_keywords(sheet):
     return keywords
 
 
-def load_tags(sheet):
+def load_tag_definitions(sheet):
     tags = {}
-    tag_defs = sheet.markup.find_all('tag')
-    logger.info(f"Processing {len(tag_defs)} tag definitions")
-    for tag in tag_defs:
+    tag_definitions = sheet.markup.find_all('tag')
+    logger.info(f"Processing {len(tag_definitions)} tag definitions")
+    for tag in tag_definitions:
         if tag.has_attr('pattern'):
             tags[tag['definition']] = tag['pattern']
         elif tag.has_attr('startPattern'):
@@ -64,7 +68,7 @@ def load_paragraphs(sheet, tags):
     in_paras = sheet.find('string').find_all('p')
     logger.info(f"Document has {len(in_paras)} line(s)")
     for line in in_paras:
-        logger.debug("Line:", line)
+        logging.debug("Line:", line)
         frags = []
         for child in line.children:
             logger.debug(f"Child: {child} ({child.name})")
@@ -87,12 +91,10 @@ def load_paragraphs(sheet, tags):
     return out_paras
 
 
-def load_sheet(filename):
-    with open(filename, "r") as fp:
-        obj = bs4.BeautifulSoup(fp, 'xml')
-
+def load_sheet(fp):
+    obj = bs4.BeautifulSoup(fp, 'xml')
     keywords = load_keywords(obj.sheet)
-    tags = load_tags(obj.sheet)
+    tags = load_tag_definitions(obj.sheet)
     paras = load_paragraphs(obj.sheet, tags)
     return {
         'front_matter': {'tags': keywords},
@@ -113,23 +115,90 @@ def write_markdown(fn, data):
         fp.writelines(text)
 
 
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} input output")
-        sys.exit(1)
+def find_zipfile_member(zf):
+    nl = zf.namelist()
+    files = [filename for filename in nl if os.path.split(filename)[1] == 'Content.xml']
+    assert(len(files) == 1)
+    return files[0]
 
-    in_fn = sys.argv[1]
-    out_fn = sys.argv[2]
 
+def open_file(filename):
+    fn, ext = os.path.splitext(filename)
+    if ext == '.xml':
+        fp = open(filename)
+    elif ext == '.ulyz':
+        zf = zipfile.ZipFile(filename)
+        zip_member = find_zipfile_member(zf)
+        fp = zf.open(zip_member)
+    else:
+        raise FormatException(f"Unknown format {filename}")
+
+    return fp
+
+
+def process_file(in_fn, out_fn):
+    data = None
     try:
-        print("Loading", in_fn)
-        data = load_sheet(in_fn)
+        zf = None
+        logger.info("Loading", in_fn)
+        fp = open_file(in_fn)
+        data = load_sheet(fp)
+        if zf:
+            zf.close()
     except FileNotFoundError as e:
         logger.exception("Error loading file", e)
-        sys.exit(0)
+        return
 
     try:
-        print("Saving", out_fn)
+        logger.info("Saving", out_fn)
         write_markdown(out_fn, data)
     except (FileNotFoundError, OSError) as e:
         logger.exception("Error writing file", e)
+
+
+def make_output_filename(in_fn, outdir=None):
+    # Break it apart...
+    logger.debug("make_output_filename - in_fn", in_fn)
+    directory, fn = os.path.split(in_fn)
+    logger.debug(f"Broke into {directory} {fn}")
+    if outdir:
+        directory = outdir
+    filebase, ext = os.path.splitext(fn)
+    logger.debug(f"Broke into {filebase} {ext}")
+    # ... then glue it back together.
+    return os.path.join(directory, f"{filebase}.md")
+
+
+def run(args):
+    if len(args) < 2:
+        print(f"Usage: {args[0]} input [output]")
+        print("")
+        print("Input can be a file or a directory. The program will convert XML and .ulyz files.")
+        print("If output is present:")
+        print()
+        print("- if input is a directory, output files will be written into this directory")
+        print("- if input is a file, this will be used as the output filename")
+        sys.exit(1)
+
+    if os.path.isdir(args[1]):
+        outdir = None
+        if len(args) == 3:
+            outdir = args[2]
+            print(f"Using {outdir} as output directory")
+
+        filenames = glob(os.path.join(args[1], "*.ulyz"))
+        filenames.extend(glob(os.path.join(args[1], "*.xml")))
+        for in_fn in filenames:
+            out_fn = make_output_filename(in_fn, outdir)
+            process_file(in_fn, out_fn)
+    else:
+        in_fn = args[1]
+        if len(args) == 3:
+            out_fn = args[2]
+        else:
+            out_fn = make_output_filename(in_fn)
+        process_file(in_fn, out_fn)
+
+
+if __name__ == '__main__':
+    run(sys.argv)
