@@ -60,7 +60,12 @@ def process_element(el, tags):
     kind = el['kind']
     logger.debug(f"Processing {kind} element")
     tag = tags[kind]
-    return tag['startPattern'] + el.text + tag['endPattern']
+    if isinstance(tag, str):
+        built = '!' + tag[0] + el.text + tag[-1] + f"(TODO converted from {kind} tag)"
+    else:
+        built = tag['startPattern'] + el.text + tag['endPattern']
+
+    return built
 
 
 def load_paragraphs(sheet, tags):
@@ -78,8 +83,11 @@ def load_paragraphs(sheet, tags):
                 frags.append(process_element(child, tags))
             elif child.name is None:
                 frags.append(child.strip())
+            elif child.name  == "escape":
+                frags.append(child.text)
             else:
-                raise Exception("Unhandled child", child)
+                logger.warning(f"Unknown child {child}, making best-effort - adding '{child.text}' to output.")
+                frags.append(child.text)
 
         logger.debug("Frags", frags)
         out_line = ' '.join(frags) + "\n"
