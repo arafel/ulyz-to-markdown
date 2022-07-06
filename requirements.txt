@@ -7,7 +7,7 @@ curtsies==0.3.5
 cwcwidth==0.1.4
 greenlet==1.1.0
 idna==2.10
-lxml==4.6.5
+lxml==4.9.1
 plumbum==1.7.0
 ply==3.11
 Pygments==2.9.0
