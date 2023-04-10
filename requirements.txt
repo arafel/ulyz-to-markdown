@@ -1,4 +1,4 @@
-beautifulsoup4==4.9.3
+beautifulsoup4==4.12.2
 blessings==1.7
 bpython==0.21
 certifi==2022.12.7
