@@ -1,6 +1,6 @@
 beautifulsoup4==4.12.2
 blessings==1.7
-bpython==0.21
+bpython==0.24
 certifi==2023.5.7
 chardet==5.1.0
 curtsies==0.4.1
