@@ -8,7 +8,7 @@ cwcwidth==0.1.8
 greenlet==2.0.2
 idna==3.4
 lxml==4.9.2
-plumbum==1.8.1
+plumbum==1.8.2
 ply==3.11
 Pygments==2.15.1
 pyxdg==0.27
