@@ -1,7 +1,7 @@
 beautifulsoup4==4.12.2
 blessings==1.7
 bpython==0.21
-certifi==2023.5.7
+certifi==2023.7.22
 chardet==5.1.0
 curtsies==0.4.1
 cwcwidth==0.1.8
